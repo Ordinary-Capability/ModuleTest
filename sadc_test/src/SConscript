@@ -1,0 +1,23 @@
+Import('rtconfig')
+import os
+from building import *
+
+Import('SDK_ROOT')
+Import('RTT_PLATFORM_ROOT')
+
+if RTT_PLATFORM_ROOT != '':
+    path_inc = [SDK_ROOT + '/include']
+else:
+    path_inc = [SDK_ROOT + '/dsp/include']
+    path_inc += [SDK_ROOT + '/dsp/include/dsp']
+    path_inc += [SDK_ROOT + '/dsp/include/types']
+    path_inc += [SDK_ROOT + '/isp/include/isp']
+    path_inc += [SDK_ROOT + '/isp/include/di']
+
+path_inc += [SDK_ROOT]
+
+
+src	= Glob('*.c')
+group = DefineGroup('sadc', src, depend = ['RT_USING_SADC_DEMO'], LOCAL_CPPPATH = path_inc)
+
+Return('group')

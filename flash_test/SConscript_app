@@ -1,0 +1,32 @@
+# RT-Thread building script for bridge
+
+import os
+from building import *
+Import('SDK_ROOT')
+Import('RTT_PLATFORM_ROOT')
+
+cwd = GetCurrentDir()
+objs = []
+dir_list = os.listdir(cwd)
+dir_list.sort()
+
+for d in dir_list:
+    path = os.path.join(cwd, d)
+    if os.path.isfile(os.path.join(path, 'SConscript')):
+        objs = objs + SConscript(os.path.join(d, 'SConscript'))
+
+if RTT_PLATFORM_ROOT == '':
+    Return('objs')
+else:
+    lib_path = [SDK_ROOT + '/libs']
+    libs = ['ispdriver']
+    libs += ['isp']
+    libs += ['dsp']
+    libs += ['dspdriver']
+    libs += ['dbi']
+    libs += ['sensor']
+    # choose one sensor
+    libs += ['ov9732']	# ov9712, ov9732, imx138, ar0130
+    group = DefineGroup('app', objs, depend = [''], LIBS = libs, LIBPATH = lib_path)
+    Return('group')
+
