@@ -7,16 +7,19 @@
 function: gpio trig led blink
 gpio_num: which gpio to light
 */
+static int g_cnt = 0;
+static int g_irq_type = 0;
+static int g_refer_gpio = 0;
 
 rt_isr_handler_t gpio_irq_cbk(int vector, void *param)
 {
-    rt_kprintf("Gpio irq occured.\n");
+    g_cnt++;
+    rt_kprintf("Gpio irq occured %d. type %d\n", g_cnt, g_irq_type);
     }
 
 
-int gpio_irq(int gpio_num, int irq_type)
+int init_refer_gpio(int gpio_num)
 {
-    
     gpio_release(gpio_num);
     fh_select_gpio(gpio_num);
     if(gpio_request(gpio_num)<0)
@@ -24,18 +27,45 @@ int gpio_irq(int gpio_num, int irq_type)
         rt_kprintf("GPIO %d unavaliable.\n");
         return -1;
         };
-   gpio_direction_input(gpio_num);
-   gpio_set_irq_type(gpio_num, irq_type);
+    gpio_direction_output(gpio_num, 0);
+    return 0; 
+    }
+
+
+int gpio_irq(int gpio_num, int irq_type)
+{
+    
+    g_irq_type = irq_type;
+    gpio_release(gpio_num);
+    fh_select_gpio(gpio_num);
+    if(gpio_request(gpio_num)<0)
+    {
+        rt_kprintf("GPIO %d unavaliable.\n");
+        return -1;
+        };
+    gpio_direction_input(gpio_num);
+    gpio_set_irq_type(gpio_num, irq_type);
   
-   //fh_gpio_register_interrupt(gpio_to_irq(gpio_num), irq_type,
-   //                         gpio_irq_cbk, RT_NULL, "gpio_test");
+    //fh_gpio_register_interrupt(gpio_to_irq(gpio_num), irq_type,
+    //                         gpio_irq_cbk, RT_NULL, "gpio_test");
 
-   rt_hw_interrupt_install(gpio_to_irq(gpio_num), gpio_irq_cbk, RT_NULL, "gpio_test");
-   gpio_irq_enable(gpio_to_irq(gpio_num));
-   //rt_hw_interrupt_umask(gpio_to_irq(gpio_num));
+    rt_hw_interrupt_install(gpio_to_irq(gpio_num), gpio_irq_cbk, RT_NULL, "gpio_test");
+    gpio_irq_enable(gpio_to_irq(gpio_num));
+    gpio_release(gpio_num);
+    //rt_hw_interrupt_umask(gpio_to_irq(gpio_num));
 
-   return 0;
-   }
+    return 0;
+    }
+
+int gpio_func_test(int gpio_num)
+{
+    if(init_refer_gpio(g_refer_gpio))
+        rt_kprintf("Init refer gpio %d fail.\n", g_refer_gpio);
+
+    if(gpio_irq(gpio_num, IRQ_TYPE_EDGE_RISING))
+        rt_kprintf("Gpio %d ", gpio_num);
+
+    }
 
 static int gpio_blink(rt_uint32_t gpio_num)
 {
@@ -54,6 +84,7 @@ static int gpio_blink(rt_uint32_t gpio_num)
     gpio_direction_output(gpio_num, 0);
 
     toggle = gpio_get_value(gpio_num);
+    rt_kprintf("Gpio %d, value %d\n", gpio_num, toggle);
 
     while (1)
     {
@@ -66,12 +97,13 @@ static int gpio_blink(rt_uint32_t gpio_num)
         if (gpio_get_value(gpio_num) != toggle)
         {
             return -RT_ERROR;
+            rt_kprintf("Set gpio %d to %d fail.\n", gpio_num, toggle);
         }
     }
     return RT_EOK;
 }
 
-static void gpio_blink_main(void *parameter) { gpio_blink(7); }
+static void gpio_blink_main(void *parameter) { gpio_blink(1); }
 /*
 function: gpio trig led blink
 gpio_num: input gpio
@@ -123,9 +155,7 @@ static int gpio_light(int gpio_num, int gpio_num_out)
 static void gpio_light_main(void *parameter) { gpio_light(6, 5); }
 void gpio_demo_init(void)
 {
-    //////start gpio demo task/////2015.11.24//trj////
     rt_thread_t threadBlink;
-    
 
     threadBlink =
         rt_thread_create("blink", gpio_blink_main, RT_NULL, 10 * 1024, 8, 20);
@@ -144,8 +174,5 @@ void gpio_demo_init(void)
 
 #ifdef RT_USING_FINSH
 #include <finsh.h>
-FINSH_FUNCTION_EXPORT(gpio_blink, gpio_blink(gpioNum));
-FINSH_FUNCTION_EXPORT(gpio_blink_main, gpio_blink_main(gpioNum));
-FINSH_FUNCTION_EXPORT(gpio_light_main, gpio_light_main(gpioNum, gpioNumOut));
 FINSH_FUNCTION_EXPORT(gpio_irq, gpio_irq(gpioNum));
 #endif

@@ -1,0 +1,8 @@
+*.dis
+*.swp
+*.img
+*.map
+*.old
+*.bin
+*.pyc
+build
