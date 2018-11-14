@@ -1,3 +1,8 @@
+rtconfig_driver.h
+rtconfig_kernel.h
+rtconfig_platform.h
+*.config
+*.dblite
 *.dis
 *.swp
 *.img

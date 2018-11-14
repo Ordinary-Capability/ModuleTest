@@ -58,11 +58,12 @@ void aes_crypto(const char data[])
     //rt_memcpy(crypto_ctl.u32IV, raw_iv, 16);
     crypto_ctl.enAlg      = CRYPTO_ALG_AES;
     crypto_ctl.enBitWidth = CRYPTO_BIT_WIDTH_128BIT;
-    crypto_ctl.enWorkMode = CRYPTO_WORK_MODE_CBC;
+    crypto_ctl.enWorkMode = CRYPTO_WORK_MODE_ECB;
+    //crypto_ctl.enWorkMode = CRYPTO_WORK_MODE_CBC;
     //crypto_ctl.enWorkMode = CRYPTO_WORK_MODE_OFB;
     crypto_ctl.enKeyLen  = CRYPTO_KEY_AES_128BIT;
-    //crypto_ctl.enIVLen = CRYPTO_IV_KEY_AES_0BIT;
-    crypto_ctl.enIVLen = CRYPTO_IV_KEY_AES_64BIT;
+    crypto_ctl.enIVLen = CRYPTO_IV_KEY_AES_0BIT;
+    //crypto_ctl.enIVLen = CRYPTO_IV_KEY_AES_64BIT;
     crypto_ctl.enKeySrc = CRYPTO_KEY_SRC_USER;
 
     
