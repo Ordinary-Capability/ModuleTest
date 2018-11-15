@@ -11,10 +11,13 @@ static int g_cnt = 0;
 static int g_irq_type = 0;
 static int g_refer_gpio = 0;
 
-rt_isr_handler_t gpio_irq_cbk(int vector, void *param)
+void gpio_irq_cbk(int vector, void *param)
 {
-    g_cnt++;
-    rt_kprintf("Gpio irq occured %d. type %d\n", g_cnt, g_irq_type);
+    if(g_irq_type == IRQ_TYPE_LEVEL_LOW)
+        gpio_direction_output(g_refer_gpio, 1);
+    else if(g_irq_type == IRQ_TYPE_LEVEL_HIGH)
+        gpio_direction_output(g_refer_gpio, 0);
+    rt_kprintf("\tGpio irq occured %d. type %d.\n", ++g_cnt, g_irq_type);
     }
 
 
@@ -34,38 +37,82 @@ int init_refer_gpio(int gpio_num)
 
 int gpio_irq(int gpio_num, int irq_type)
 {
-    
     g_irq_type = irq_type;
-    gpio_release(gpio_num);
+    g_cnt = 0;
+
+    switch(irq_type)
+    {
+        case IRQ_TYPE_EDGE_RISING: 
+            rt_kprintf("GPIO %d irq type IRQ_TYPE_EDGE_RISING test...\n", gpio_num);
+            break;
+        case IRQ_TYPE_EDGE_FALLING:
+            rt_kprintf("GPIO %d irq type IRQ_TYPE_EDGE_FALLING test...\n", gpio_num);
+            break;
+        case IRQ_TYPE_EDGE_BOTH:
+            rt_kprintf("GPIO %d irq type IRQ_TYPE_EDGE_BOTH test...\n", gpio_num);
+            break;
+        case IRQ_TYPE_LEVEL_LOW:
+            rt_kprintf("GPIO %d irq type IRQ_TYPE_LEVEL_LOW test...\n", gpio_num);
+            break;
+        case IRQ_TYPE_LEVEL_HIGH:
+            rt_kprintf("GPIO %d irq type IRQ_TYPE_LEVEL_HIGH test...\n", gpio_num);
+            break;
+        default:
+            rt_kprintf("GPIO %d irq type unknown ...\n");
+            return -1;
+        }
+
+    fh_select_gpio(g_refer_gpio);
+    if(gpio_request(g_refer_gpio)<0)
+    {
+        rt_kprintf("Request GPIO %d fail.\n", g_refer_gpio);
+        gpio_release(gpio_num);
+        return -1;
+        };
+
     fh_select_gpio(gpio_num);
     if(gpio_request(gpio_num)<0)
     {
-        rt_kprintf("GPIO %d unavaliable.\n");
+        rt_kprintf("GPIO %d unavaliable.\n", gpio_num);
         return -1;
         };
+
     gpio_direction_input(gpio_num);
     gpio_set_irq_type(gpio_num, irq_type);
-  
-    //fh_gpio_register_interrupt(gpio_to_irq(gpio_num), irq_type,
-    //                         gpio_irq_cbk, RT_NULL, "gpio_test");
-
     rt_hw_interrupt_install(gpio_to_irq(gpio_num), gpio_irq_cbk, RT_NULL, "gpio_test");
     gpio_irq_enable(gpio_to_irq(gpio_num));
-    gpio_release(gpio_num);
-    //rt_hw_interrupt_umask(gpio_to_irq(gpio_num));
 
+    int i =0, init_status = 0;
+    for(i=0; i<10; i++)
+    {
+        gpio_direction_output(g_refer_gpio, init_status);
+        init_status ^= 1;
+        rt_thread_delay(1); 
+        }        
+
+    gpio_irq_disable(gpio_to_irq(gpio_num));
+    gpio_release(gpio_num);
+    gpio_release(g_refer_gpio);
     return 0;
     }
 
 int gpio_func_test(int gpio_num)
 {
-    if(init_refer_gpio(g_refer_gpio))
-        rt_kprintf("Init refer gpio %d fail.\n", g_refer_gpio);
-
-    if(gpio_irq(gpio_num, IRQ_TYPE_EDGE_RISING))
-        rt_kprintf("Gpio %d ", gpio_num);
-
+    //if(init_refer_gpio(g_refer_gpio))
+    //    rt_kprintf("Init refer gpio %d fail.\n", g_refer_gpio);
+    if(gpio_irq(gpio_num, IRQ_TYPE_EDGE_RISING)
+        ||gpio_irq(gpio_num, IRQ_TYPE_EDGE_FALLING)
+        ||gpio_irq(gpio_num, IRQ_TYPE_EDGE_BOTH)
+        ||gpio_irq(gpio_num, IRQ_TYPE_LEVEL_LOW)
+        ||gpio_irq(gpio_num, IRQ_TYPE_LEVEL_HIGH))
+    {
+        rt_kprintf("Gpio %d test fail.\n", gpio_num);
+        return -1;
+        }
+        
+    return 0;
     }
+
 
 static int gpio_blink(rt_uint32_t gpio_num)
 {
@@ -174,5 +221,5 @@ void gpio_demo_init(void)
 
 #ifdef RT_USING_FINSH
 #include <finsh.h>
-FINSH_FUNCTION_EXPORT(gpio_irq, gpio_irq(gpioNum));
+FINSH_FUNCTION_EXPORT(gpio_func_test, gpio_func_test(gpioNum));
 #endif
