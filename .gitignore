@@ -4,7 +4,9 @@ rtconfig_platform.h
 *.config
 *.dblite
 *.dis
+*.elf
 *.swp
+*.axf
 *.img
 *.map
 *.old
