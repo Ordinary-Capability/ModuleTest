@@ -59,6 +59,7 @@ int gpio_irq(int gpio_num, int irq_type)
     g_irq_type = irq_type;
     g_cnt = 0;
 
+    gpio_release(gpio_num);
     fh_select_gpio(gpio_num);
     if(gpio_request(gpio_num)<0)
     {
@@ -142,6 +143,7 @@ int gpio_level_test(int gpio_num)
     int i=0, level = 0;
 
     rt_kprintf("GPIO %d level test...\n", gpio_num);
+    gpio_release(gpio_num);
     fh_select_gpio(gpio_num);
     if(gpio_request(gpio_num)<0)
     {
@@ -170,7 +172,7 @@ int gpio_level_test(int gpio_num)
             gpio_release(g_refer_gpio);
             return -1;
             }
-        rt_kprintf("Toggle GPIO %d level to %d successfully.\n", gpio_num, level);
+        rt_kprintf("\tToggle GPIO %d level to %d successfully.\n", gpio_num, level);
         level ^= 1;
         }
 
