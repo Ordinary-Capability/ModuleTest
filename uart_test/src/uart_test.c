@@ -50,22 +50,23 @@ void init_transfer_pattern(int data_bits)
     {
         case DATA_BITS_8:
            for(i=0; i<DATA_LEN; i++) g_pattern[i] = i;
-           return;
+           break;
         case DATA_BITS_7:
            for(i=0; i<DATA_LEN; i++) g_pattern[i] = i&0x7f;
-           return;
+           break;
         case DATA_BITS_6:
            for(i=0; i<DATA_LEN; i++) g_pattern[i] = i&0x3f ;
-           return;
+           break;
         case DATA_BITS_5:
            for(i=0; i<DATA_LEN; i++) g_pattern[i] = i&0x1f;
-           return;
+           break;
         default:
            for(i=0; i<DATA_LEN; i++) g_pattern[i]=i;
         }
     //rt_kprintf("UART transfer bytes pattern:\n");
     //for(i=0; i<DATA_LEN; i++)rt_kprintf("0x%x", g_pattern[i]); 
     //rt_kprintf("\n");
+    return;
     }
 
 struct rt_semaphore rx_sem;
@@ -115,6 +116,7 @@ int uart_transfer(const char *name)
     rt_device_t uart_dev = RT_NULL;
     char recv_data[DATA_LEN] = {0};
     int count = 0, heel=0, i=0, j=0, ret;
+
 
     uart_dev = rt_device_find(name);
     if(uart_dev == RT_NULL)
@@ -169,6 +171,20 @@ int uart_test(const char *name)
 {
     rt_uint32_t i, n;
 
+    if(name == RT_NULL)
+    {
+        rt_kprintf("Pass uart device name as func input para, eg. uart1.\n");
+        return -1;
+        }
+    /*
+    rt_device_t uart_dev = RT_NULL;
+    uart_dev = rt_device_find(name);
+    if(rt_device_open(uart_dev, RT_DEVICE_OFLAG_RDWR|RT_DEVICE_FLAG_INT_RX) != RT_EOK)
+    {
+        rt_kprintf("Open device fail.\n");
+        return -1;
+        }
+    rt_device_close(uart_dev);*/
     rt_kprintf("=============== UART %s test start ===========\n", name);
     n = sizeof(g_uart_conf_set)/sizeof(struct serial_configure);
     for(i=0; i<n; i++)
@@ -185,6 +201,7 @@ int uart_test(const char *name)
             rt_kprintf("UART %s data transfer failed.\n", name);
             return -1;
             }
+        rt_kprintf("UART %s data transfer sucessfully.\n", name);
         }
     rt_kprintf("=============== UART %s test end ===========\n", name);
 
