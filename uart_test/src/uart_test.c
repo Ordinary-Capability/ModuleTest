@@ -82,8 +82,6 @@ int uart_config(const char *name, struct serial_configure *conf)
 {
     const char *device_name = name;
     rt_device_t uart_dev = RT_NULL;
-    struct rt_serial_device *serial;
-    int ret=0;
 
     rt_kprintf("Config %s baudrate:%d databits:%d stopbits:%d parity:%d \n",
                 name, conf->baud_rate, conf->data_bits, conf->stop_bits, conf->parity);
@@ -93,20 +91,22 @@ int uart_config(const char *name, struct serial_configure *conf)
         rt_kprintf("Can not find device %s.\n", name);
         return -1;
         }
-
     if(rt_device_set_rx_indicate(uart_dev, uart_intput) != RT_EOK)
     {
         rt_kprintf("Set rx indicate fail.\n"); 
         return -1;
         }
-
-    serial = (struct rt_serial_device *)uart_dev;
-    if(serial->ops->configure(serial, conf) != RT_EOK)
+    if(rt_device_open(uart_dev, RT_DEVICE_OFLAG_RDWR|RT_DEVICE_FLAG_INT_RX) != RT_EOK)
+    {
+        rt_kprintf("Open device fail.\n");
+        return -1;
+        }
+    if(RT_EOK!=rt_device_control(uart_dev, RT_DEVICE_CTRL_CONFIG, conf))
 	{
 		rt_kprintf("Config %s fail.\n", name);
         return -1;
 		}
-
+    rt_device_close(uart_dev);
     return 0;
     }
 
