@@ -12,4 +12,5 @@ rtconfig_platform.h
 *.old
 *.bin
 *.pyc
+*.a
 build

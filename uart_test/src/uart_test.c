@@ -101,7 +101,7 @@ int uart_config(const char *name, struct serial_configure *conf)
         rt_kprintf("Open device fail.\n");
         return -1;
         }
-    if(RT_EOK!=rt_device_control(uart_dev, RT_DEVICE_CTRL_CONFIG, conf))
+    if(RT_EOK != rt_device_control(uart_dev, RT_DEVICE_CTRL_CONFIG, conf))
 	{
 		rt_kprintf("Config %s fail.\n", name);
         return -1;

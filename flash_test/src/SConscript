@@ -13,6 +13,7 @@ else:
     path_inc += [SDK_ROOT + '/dsp/include/types']
     path_inc += [SDK_ROOT + '/isp/include/isp']
     path_inc += [SDK_ROOT + '/isp/include/di']
+    path_inc += [SDK_ROOT + '/components/mbedtls/include']
 
 path_inc += [SDK_ROOT]
 
