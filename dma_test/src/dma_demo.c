@@ -15,18 +15,6 @@
 
 extern void do_gettimeofday(struct timeval *tv);
 
-struct rt_dma_device *gst_dma_device = RT_NULL;
-struct rt_completion dma_complete0, dma_complete1, dma_complete2;
-
-static void *addr_src = RT_NULL;
-static void *addr_dst = RT_NULL;
-
-void dma_callback0(){rt_completion_done(&dma_complete0);}
-void dma_callback1(){rt_completion_done(&dma_complete1);}
-void dma_callback2(){rt_completion_done(&dma_complete2);}
-
-int sem_i = 0;
-
 struct dma_control {
     rt_uint32_t channel;
     unsigned char *src;
@@ -34,7 +22,51 @@ struct dma_control {
     rt_uint32_t len;
     dma_complete_callback cbk;
     struct rt_completion *complete;
+    struct timeval t_start;
     };
+
+struct rt_dma_device *gst_dma_device = RT_NULL;
+struct rt_completion dma_complete0, dma_complete1, dma_complete2;
+
+static void *addr_src = RT_NULL;
+static void *addr_dst = RT_NULL;
+
+void dma_callback0(void *para)
+{
+    struct timeval t_end;
+    struct dma_control *ctl = (struct dma_control *)para;
+    rt_uint32_t delta;
+
+    do_gettimeofday(&t_end);
+    delta = 1000000*(t_end.tv_sec - (ctl->t_start).tv_sec) + t_end.tv_usec - (ctl->t_start).tv_usec;
+    rt_kprintf("Mem copy size 0x%x bytes, Time consume: %d us.\n", ctl->len, delta);
+    rt_completion_done(&dma_complete0);
+    }
+void dma_callback1(void *para)
+{
+    struct timeval t_end;
+    struct dma_control *ctl = (struct dma_control *)para;
+    rt_uint32_t delta;
+
+    do_gettimeofday(&t_end);
+    delta = 1000000*(t_end.tv_sec - (ctl->t_start).tv_sec) + t_end.tv_usec - (ctl->t_start).tv_usec;
+    rt_kprintf("Mem copy size 0x%x bytes, Time consume: %d us.\n", ctl->len, delta);
+    rt_completion_done(&dma_complete1);
+    }
+void dma_callback2(void *para)
+{
+    struct timeval t_end;
+    struct dma_control *ctl = (struct dma_control *)para;
+    rt_uint32_t delta;
+
+    do_gettimeofday(&t_end);
+    delta = 1000000*(t_end.tv_sec - (ctl->t_start).tv_sec) + t_end.tv_usec - (ctl->t_start).tv_usec;
+    rt_kprintf("Mem copy size 0x%x bytes, Time consume: %d us.\n", ctl->len, delta);
+    rt_completion_done(&dma_complete2);
+    }
+
+int sem_i = 0;
+
 
 
 struct dma_transfer *dma_transfer_construct(struct dma_control *st_dma_ctl)
@@ -68,7 +100,7 @@ struct dma_transfer *dma_transfer_construct(struct dma_control *st_dma_ctl)
     pst_dma_transfer->src_inc_mode = DW_DMA_SLAVE_INC;
     pst_dma_transfer->dst_inc_mode = DW_DMA_SLAVE_INC;
     pst_dma_transfer->complete_callback = st_dma_ctl->cbk;
-    pst_dma_transfer->complete_para = RT_NULL;
+    pst_dma_transfer->complete_para = (void *)st_dma_ctl;
     pst_dma_transfer->trans_len    = (st_dma_ctl->len>>2);
 
     return pst_dma_transfer;
@@ -168,15 +200,14 @@ int dma_m2m_copy(struct dma_control *st_dma_ctl)
         }
 
     rt_completion_init(st_dma_ctl->complete);
-    do_gettimeofday(&t_start);
+    do_gettimeofday(&(st_dma_ctl->t_start));
     gst_dma_device->ops->control(gst_dma_device,
                                     RT_DEVICE_CTRL_DMA_SINGLE_TRANSFER,
                                     pst_dma_transfer); 
-    rt_thread_yield();
     rt_completion_wait(st_dma_ctl->complete, RT_WAITING_FOREVER);
-    do_gettimeofday(&t_end);
-    delta = 1000000*(t_end.tv_sec - t_start.tv_sec) + t_end.tv_usec - t_start.tv_usec;
-    rt_kprintf("Mem copy size 0x%x bytes, Time consume: %d us.\n", st_dma_ctl->len, delta);
+    //do_gettimeofday(&t_end);
+    //delta = 1000000*(t_end.tv_sec - t_start.tv_sec) + t_end.tv_usec - t_start.tv_usec;
+    //rt_kprintf("Mem copy size 0x%x bytes, Time consume: %d us.\n", st_dma_ctl->len, delta);
 
     if(gst_dma_device->ops->control(gst_dma_device,
                                     RT_DEVICE_CTRL_DMA_RELEASE_CHANNEL,
@@ -199,8 +230,6 @@ void dma_m2m_thread_entry(void *argv)
 {
     struct dma_control *st_dma_ctl=(struct dma_control *)argv;
     rt_uint32_t i, loop=1000;
-    //unsigned char *src, *dst;
-    //struct dma_control st_dma_ctl;
 
     src_buffer_build(st_dma_ctl->src, st_dma_ctl->len);
     for(i=0; i<loop; i++)
@@ -211,7 +240,6 @@ void dma_m2m_thread_entry(void *argv)
             rt_kprintf("Dma m2m copy fail.\n");
             return;
             }
-        
         if(dst_buffer_varify(st_dma_ctl->src, st_dma_ctl->dst, st_dma_ctl->len) != RT_EOK)
         {
             rt_kprintf("Dma buffer varify fail.\n");
@@ -276,7 +304,7 @@ void dma_m2m_bg(rt_uint32_t chn1, rt_uint32_t chn2)
                                         (void *)&st_dma_ctl2, 10 * 1024, 80, 20);
     sem_i = 1;
     if(dma_m2m_thread1 != RT_NULL)
-        //rt_thread_startup(dma_m2m_thread1);
+        rt_thread_startup(dma_m2m_thread1);
     if(dma_m2m_thread2 != RT_NULL)
         rt_thread_startup(dma_m2m_thread2);
    
