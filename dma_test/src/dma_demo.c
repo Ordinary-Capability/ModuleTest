@@ -234,7 +234,7 @@ void dma_m2m_thread_entry(void *argv)
     src_buffer_build(st_dma_ctl->src, st_dma_ctl->len);
     for(i=0; i<loop; i++)
     {
-        rt_kprintf("Dma channel %d loop %d\n", st_dma_ctl->channel, i);
+        //rt_kprintf("Dma channel %d loop %d\n", st_dma_ctl->channel, i);
         if(dma_m2m_copy(st_dma_ctl) != 0)
         {
             rt_kprintf("Dma m2m copy fail.\n");
@@ -260,7 +260,6 @@ void dma_m2m_bg(rt_uint32_t chn1, rt_uint32_t chn2)
     unsigned char* src1, *dst1, *src2, *dst2;
     rt_uint32_t copy_size = 0x200000;
 
-    
     src1 = (unsigned char*)rt_malloc(copy_size);
     if(src1 == RT_NULL)
     {
