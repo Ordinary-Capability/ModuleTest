@@ -14,7 +14,7 @@ static mem_fifo_run = 0;
 
 int mem_fifo_entry(char name[])
 {
-    rt_uint32_t i, j, v[5], sum[5], cnt=100;
+    rt_uint32_t i, j, v[5], sum[5], cnt=200;
     mem_fifo_run = 1;
     
     printf("\n                DDR_P0 DDR_P1 DDR_P2 DDR_P3 DDR_P4\n");
@@ -30,7 +30,7 @@ int mem_fifo_entry(char name[])
             sum[4] += (GET_REG(0xed000184)>>0)&0x7f; 
             rt_thread_delay(1);
             }
-        printf("AVG FIFO LEN: %d %d %d %d %d \n",
+        printf("AVG BDW USAGE: %d%% %d%% %d%% %d%% %d%% \n",
             sum[0]/cnt, sum[1]/cnt, sum[2]/cnt, sum[3]/cnt, sum[4]/cnt);
         }
     return 0;
