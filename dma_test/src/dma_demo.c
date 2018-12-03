@@ -9,7 +9,7 @@
 
 
 #define ALIGN_DMA(x) ((x + 3)&(~3))
-#define MEM_POOL_SIZE 0x400000  //4M
+#define MEM_POOL_SIZE 0x300000  //4M
 #define MAX_DMA_CHAN_NUM 5
 
 
@@ -121,6 +121,7 @@ int mem_init()
     if(addr_dst == RT_NULL)
     {
         rt_kprintf("Rt malloc mem for addr_dst fail.\n");
+        rt_free(addr_src);
         return -1;
         }
     
@@ -321,7 +322,7 @@ void dma_m2m_bg(rt_uint32_t chn1, rt_uint32_t chn2)
 
 int dma_m2m()
 {
-    rt_uint32_t copy_size_set[] = {0x4, 0x1000, 0x100000, 0x400000};
+    rt_uint32_t copy_size_set[] = {0x4, 0x1000, 0x100000, MEM_POOL_SIZE};
     struct dma_control st_dma_ctl;
     int i=0, j=0, ret=0,flag=0;
 
