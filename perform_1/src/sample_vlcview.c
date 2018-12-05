@@ -363,6 +363,8 @@ int vlcview(char *dsp_ip, rt_uint32_t port_no)
 
 #if USE_H265
         FH_VPSS_SetVOMode(i, VPU_VOMODE_SCAN);
+#else
+        if(i==1)FH_VPSS_SetVOMode(i, VPU_VOMODE_SCAN);
 #endif
 
         /******************************************
