@@ -9,6 +9,7 @@ Import('APP_ROOT')
 
 path_inc = [APP_ROOT + '/common/inc']
 path_inc += [APP_ROOT + '/common/sdk_demo/vlcview']
+path_inc += [SDK_ROOT + '/extlib/inc/human_detect']
 path_inc += [SDK_ROOT + '/extlib/inc']
 path_inc += [SDK_ROOT + '/extlib']
 path_inc += [SDK_ROOT + '/extlib/inc/isp']
@@ -18,7 +19,9 @@ path_inc += [SDK_ROOT + '/components']
 path_inc += [SDK_ROOT]
 
 src	= Glob('*.c')
+src += Glob("../smart_enc/*.c")
 
-group = DefineGroup('sample_vlcview', src, depend = ['RT_USING_SAMPLE_VLCVIEW'], LOCAL_CPPPATH = path_inc)
+#group = DefineGroup('sample_vlcview', src, depend = ['FH_USING_ADVAPI_MD', 'RT_USING_HUMAN_DETECT', 'RT_USING_SAMPLE_VLCVIEW'], LOCAL_CPPPATH = path_inc)
+group = DefineGroup('sample_vlcview', src, depend = ['RT_USING_HUMAN_DETECT', 'RT_USING_SAMPLE_VLCVIEW'], LOCAL_CPPPATH = path_inc)
 
 Return('group')

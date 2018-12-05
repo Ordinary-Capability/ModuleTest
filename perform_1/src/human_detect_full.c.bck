@@ -1,0 +1,276 @@
+/******************************************************************************
+
+                  版权所有 (C),上海富瀚微电子股份有限公司
+
+ ******************************************************************************
+  文 件 名   : human_detect.c
+  功能描述   : 人形检测功能实现
+*
+******************************************************************************/
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <rtthread.h>
+#include "dsp/fh_vpu_mpi.h"
+#include "dsp/fh_venc_mpi.h"
+#include "sample_opts.h"
+#include "human_detect.h"
+#include "fh_objdetect_vbcli.h"
+#include "fh_imgprocess_vbcli.h"
+#include "fh_gvbus_client.h"
+#include "types/bufCtrl.h"
+#include "sys/time.h"
+#include "model_human_head_40572366.h"
+#include "model_human_body_40570666.h"
+
+#if GOSD_BOX_ON
+#include "FHAdv_GOSD_mpi.h"
+#endif
+
+/* 全局数据定义 */
+extern int g_stop_running;
+
+/*****************************************************************************
+ 函 数 名: sample_hd_task
+ 功能描述  : 移动侦测检测函数
+ 输入参数  : void *args
+ 输出参数  : 无
+ 返 回 值: void*
+*****************************************************************************/
+void *sample_hd_full_task(void *args)
+{
+    int ret               = 0;      /*返回值*/
+    int i                 = 0;
+    int j                 = 0;
+    int detect_count_down = 1; /*检测到人形后经过detect_count_down帧后再次检测*/
+    double w_ratio        = 1;
+    double h_ratio        = 1;
+    struct timeval start, finish;
+    long timeuse;
+    FH_VPU_STREAM vpuframe; /*帧数据*/
+
+    FILE *fp;/*人形模式参数文件*/
+    FH_ODET_cfg_t          cfg;/*人形句柄配置*/
+    struct FH_ODET_Handle *odet = NULL;/*人形句柄*/
+    FH_imgY8_t *frame_data      = NULL;/*人形检测数据*/
+    FH_subImgY8_t roi, ext;/*roi信息*/
+    int dt_x, dt_y, dt_w, dt_h;
+    MEM_DESC FRAME_BUF;
+    MEM_DESC MODEL_FILE_1, MODEL_FILE_2, MODEL_FILE_3;
+
+    int model_num = 2;
+    int box_num   = 0;
+    FH_ODET_objGroup_t out[2];
+    FH_ODET_objPos_t objPos[2 * 8];
+    out[0].modelId = 40572366;
+    out[1].modelId = FH_ODET_BODY_MODEL;
+
+#if GOSD_BOX_ON
+    FHT_GOSD_BASECFG_t gboxs[15];/*gosd框*/
+    ret = FHAdv_Gosd_Init(VIDEO_INPUT_WIDTH, VIDEO_INPUT_HEIGHT);
+    if (ret != 0)
+    {
+        printf("FHAdv_Gosd_Init failed\n");
+    }
+#endif
+
+#if GBOX_ON
+    FH_VPU_GBOX gbox;
+    gbox.chan = 0;
+#endif
+
+    /*计算幅面映射比例*/
+    w_ratio = ((double)CH1_WIDTH / (double)CH0_WIDTH);
+    h_ratio = ((double)CH1_HEIGHT / (double)CH0_HEIGHT);
+
+    /*分配检测通道yuv vmm用于码流推送至arc*/
+    ret = buffer_malloc(&FRAME_BUF, CH1_WIDTH * CH1_HEIGHT, DEFALT_ALIGN);
+    if (ret)
+    {
+        printf("buffer malloc error=%d\n", ret);
+        return -1;
+    }
+
+    FH_GVBUSCLI_init();/*初始化vbus client功能*/
+
+        /*获取人形检测模型  head: 头肩  body: 全身*/
+    cfg.modelFileLen[0] = sizeof(hd_head);
+    ret = buffer_malloc(&MODEL_FILE_1, cfg.modelFileLen[0], DEFALT_ALIGN);
+    if (ret)
+    {
+        printf("buffer malloc error=%d\n", ret);
+        return -1;
+    }
+
+    cfg.modelFile[0] = (uint8_t *)MODEL_FILE_1.base;
+    memcpy(cfg.modelFile[0], hd_head, cfg.modelFileLen[0]);
+
+    cfg.modelFileLen[1] = sizeof(hd_body);
+
+    ret = buffer_malloc(&MODEL_FILE_2, cfg.modelFileLen[1], DEFALT_ALIGN);
+    if (ret)
+    {
+        printf("buffer malloc error=%d\n", ret);
+        return -1;
+    }
+
+    cfg.modelFile[1] = (uint8_t *)MODEL_FILE_2.base;
+    memcpy(cfg.modelFile[1], hd_body, cfg.modelFileLen[1]);
+
+
+    cfg.maxImageWidth  = CH1_WIDTH;/*人形检测最大幅面*/
+    cfg.maxImageHeight = CH1_HEIGHT;
+    cfg.modelCnt       = 2; /*人形检测参考模型数量，最大为4*/
+    cfg.rotateAngle    = PIC_ROTATE;/*人形检测旋转角度*/
+    cfg.detectMode     = FH_OBJDET_FULL_FRAME;/*人形检测模式*/
+    cfg.modelThres[0]  = 60;/*人形检测模型对应阈值*/
+    cfg.modelThres[1]  = 50;
+    cfg.maxScaleNum    = 40;
+    cfg.slideStep      = 2;
+    cfg.perScaleRate   = 100;
+    odet = VB_ODET_create(&cfg);/*创建人形检测句柄*/
+    if (odet == NULL)
+    {
+        printf("VB_ODET_create failed\n");
+        goto exit;
+    }
+
+    frame_data = VB_IM_createBufferY8(CH1_WIDTH, CH1_HEIGHT);/*创建检测数据buffer*/
+    if (frame_data == NULL)
+    {
+        goto exit;
+    }
+
+    while (!g_stop_running)
+    {
+#if GOSD_BOX_ON
+        FHAdv_Gosd_Clear(0, 0, VIDEO_INPUT_WIDTH, VIDEO_INPUT_HEIGHT);
+#endif
+
+        ret = FH_VPSS_GetChnFrame(1, &vpuframe);/*获取yuv数据*/
+        if (RETURN_OK != ret)
+        {
+            printf("FH_VPSS_GetChnFrame failed with %d\n", ret);
+            usleep(40*1000);
+            continue;
+        }
+        memcpy((unsigned char *)FRAME_BUF.vbase, vpuframe.yluma.vbase, vpuframe.yluma.size);
+
+        ret = VB_IM_fillBufferY8(frame_data, (uint8_t *)FRAME_BUF.base);
+        if (ret != FH_IM_SUCCESS)
+        {
+            printf("VB_IM_fillBufferY8 failed\n");
+        }
+        ret = VB_IM_cropImageY8(frame_data, 0, 0, CH1_WIDTH, CH1_HEIGHT, &roi);/*切割roi框*/
+        if (ret != FH_IM_SUCCESS)
+        {
+            printf("VB_IM_cropImageY8 failed\n");
+        }
+
+        ret = VB_ODET_detectObject(odet, &roi, &out, 2);/*在roi进行人形检测*/
+        if (ret != 0)
+        {
+            printf("VB_ODET_detectObject failed with %d\n", ret);
+        }
+
+        box_num = 0;
+        for (i = 0; i < model_num; i++)
+        {
+            for (j = 0; j < out[i].num; j++)
+            {
+                objPos[box_num] = out[i].objlist[j].pos;
+                printf("out[%d] num %d\n", i, out[i].num);
+                printf("confidence %d  %d\n", i, out[i].objlist[i].confidence);
+                /*检测出人形画红（绿）色框*/
+#if GOSD_BOX_ON
+                dt_x = objPos[box_num].x / w_ratio;
+                dt_y = objPos[box_num].y / h_ratio;
+                dt_w = objPos[box_num].w / w_ratio;
+                dt_h = objPos[box_num].h / w_ratio;
+                gboxs[box_num].gosdstartPosition.pos_x   = dt_x > CH0_WIDTH ? CH0_WIDTH : dt_x;
+                gboxs[box_num].gosdstartPosition.pos_y   = dt_y > CH0_HEIGHT ? CH0_HEIGHT : dt_y;
+                gboxs[box_num].sizeofbox.gosd_w          = gboxs[i].gosdstartPosition.pos_x + dt_w > CH0_WIDTH ?
+                                                         CH0_WIDTH - gboxs[i].gosdstartPosition.pos_x : dt_w;
+                gboxs[box_num].sizeofbox.gosd_h          = gboxs[i].gosdstartPosition.pos_y + dt_h > CH0_HEIGHT ?
+                                                         CH0_HEIGHT - gboxs[i].gosdstartPosition.pos_y : dt_h;
+                printf("%d %d %d %d\n", gboxs[box_num].gosdstartPosition.pos_x, gboxs[box_num].gosdstartPosition.pos_y, gboxs[box_num].sizeofbox.gosd_w, gboxs[box_num].sizeofbox.gosd_h);
+                gboxs[box_num].gosdboxColor.norcolor.fRed         = 255;
+                gboxs[box_num].gosdboxColor.norcolor.fGreen       = 0;
+                gboxs[box_num].gosdboxColor.norcolor.fBlue        = 0;
+                gboxs[box_num].gosdboxColor.norcolor.fAlpha       = 255;
+                gboxs[box_num].gosdboxColor.invcolor.fRed         = 0;
+                gboxs[box_num].gosdboxColor.invcolor.fGreen       = 255;
+                gboxs[box_num].gosdboxColor.invcolor.fBlue        = 0;
+                gboxs[box_num].gosdboxColor.invcolor.fAlpha       = 255;
+                ret = FHAdv_Gosd_SetGbox(&gboxs[box_num]);
+                if (ret != 0)
+                {
+                    printf("FHAdv_Gosd_SetGbox %d failed\n", i);
+                }
+#endif
+#if GBOX_ON
+                dt_x = objPos[box_num].x / w_ratio;
+                dt_y = objPos[box_num].y / h_ratio;
+                dt_w = objPos[box_num].w / w_ratio;
+                dt_h = objPos[box_num].h / w_ratio;
+                gbox.gbox[box_num].enable         = 1;
+                gbox.gbox[box_num].color          = 0xffffffff;
+                gbox.gbox[box_num].area.u32X      = dt_x > CH0_WIDTH ? CH0_WIDTH : dt_x;
+                gbox.gbox[box_num].area.u32Y      = dt_y > CH0_HEIGHT ? CH0_HEIGHT : dt_y;
+                gbox.gbox[box_num].area.u32Width  = gbox.gbox[i].area.u32X + dt_w > CH0_WIDTH ?
+                                                         CH0_WIDTH - gbox.gbox[i].area.u32X : dt_w;
+                gbox.gbox[box_num].area.u32Height = gbox.gbox[i].area.u32Y + dt_h > CH0_HEIGHT ?
+                                                         CH0_HEIGHT - gbox.gbox[i].area.u32Y : dt_h;
+#endif
+                box_num++;
+            }
+        }
+
+        if (box_num)
+            detect_count_down = 25; /*检测出人形后等待1s后再次检测*/
+detect_end:
+#if GBOX_ON
+        while (box_num < MAX_GBOX_AREA)
+        {
+            gbox.gbox[box_num].enable         = 0;
+            box_num++;
+        }
+        ret = FH_VPSS_SetGBox(&gbox);
+        if (ret != RETURN_OK)
+            printf("FH_VPSS_SetGBox failed with %d\n", ret);
+#endif
+
+        while (detect_count_down > 0)/*如果检测出人形，等待1s后再次检测*/
+        {
+            detect_count_down--;
+            usleep(40*1000);
+            continue;
+        }
+        detect_count_down = 1;
+    }
+
+exit:
+if (frame_data != NULL)
+    VB_IM_destroyBufferY8(frame_data);
+if (odet != NULL)
+    ret = VB_ODET_destroy(odet);
+    if (ret != FH_ODET_SUCCESS)
+        printf("FH_ODET_destroy failed with %d\n", ret);
+    FH_GVBUSCLI_deinit();
+    return NULL;
+}
+
+int hd_full_init(void)
+{
+    rt_thread_t thread_hd_full;
+    thread_hd_full = rt_thread_create("human_detect_full", sample_hd_full_task, RT_NULL, 4 * 1024, RT_APP_THREAD_PRIORITY, 10);
+    if (thread_hd_full != RT_NULL)
+        rt_thread_startup(thread_hd_full);
+}
+
+#ifdef RT_USING_FINSH
+#include <finsh.h>
+FINSH_FUNCTION_EXPORT(hd_full_init, hd_full_init());
+#endif

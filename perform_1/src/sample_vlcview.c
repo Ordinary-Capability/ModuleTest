@@ -40,6 +40,7 @@
 #include "sample_opts.h"
 #include "isp_enum.h"
 #include "multi_sensor.h"
+#include "FHAdv_MD_mpi.h"
 
 #if defined(CONFIG_CHIP_FH8632) || defined(CONFIG_CHIP_FH8833) || defined(CONFIG_CHIP_FH8833T) || defined(CONFIG_CHIP_FH8856) || defined(CONFIG_CHIP_FH8620H) || defined(CONFIG_CHIP_FH8852)
 #define CHANNEL_COUNT 2
@@ -94,7 +95,7 @@ static struct channel_info g_channel_infos[] = {
 #endif
 };
 
-static FH_BOOL g_stop_running = FH_TRUE;
+FH_BOOL g_stop_running = FH_TRUE;
 static rt_thread_t g_thread_isp;
 static rt_thread_t g_thread_stream;
 
@@ -143,6 +144,14 @@ void sample_vlcview_exit(void)
     if (exit_process)
        rt_thread_suspend(exit_process);
 #endif
+
+    exit_process = rt_thread_find("human_detect_roi");
+    if (exit_process)
+        rt_thread_delete(exit_process);
+
+    exit_process = rt_thread_find("human_detect_full");
+    if (exit_process)
+        rt_thread_delete(exit_process);
 
     FH_SYS_Exit();
 }
@@ -478,6 +487,29 @@ int vlcview(char *dsp_ip, rt_uint32_t port_no)
         }
     }
 
+#if USE_BGM
+
+#else
+    ret = FHAdv_MD_Ex_Init();
+    if (ret != 0)
+    {
+        printf("[ERRO]: FHAdv_MD_Ex_Init failed, ret=%d\n", ret);
+        goto err_exit;
+    }
+
+    FHT_MDConfig_Ex_t md_config;
+
+    md_config.threshold = 80;
+    md_config.framedelay = 1;
+    md_config.enable = 1;
+
+    ret = FHAdv_MD_Ex_SetConfig(&md_config);
+    if (ret != 0)
+    {
+        printf("[ERRO]: FHAdv_MD_Ex_SetConfig failed, ret=%d\n", ret);
+        goto err_exit;
+    }
+#endif
     /******************************************
      step  9: init ISP, and then start ISP process thread
     ******************************************/

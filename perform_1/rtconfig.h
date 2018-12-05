@@ -16,7 +16,8 @@
 #elif defined(CONFIG_CHIP_FH8620H)
 #define RT_USING_JXH62_MIPI
 #elif defined(CONFIG_CHIP_FH8852)
-#define RT_USING_OVOS05_MIPI
+#define RT_USING_JXF22_MIPI
+//#define RT_USING_OVOS05_MIPI
 #else
 #define RT_USING_JXF22_MIPI
 #endif
@@ -36,6 +37,11 @@
 
 #define RT_USING_DSP
 #define RT_USING_ISP
+#define RT_USING_HUMAN_DETECT
+#ifdef RT_USING_HUMAN_DETECT
+/*#define RT_USING_HUMAN_DETECT_FULL*/
+#define RT_USING_HUMAN_DETECT_ROI
+#endif
 
 /* #define FH_USING_RTSP */
 #ifdef FH_USING_RTSP
