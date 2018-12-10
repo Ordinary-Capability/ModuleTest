@@ -78,6 +78,27 @@ void *sample_hd_roi_task(void  *args)
     MOtion_BGM_RUNTB_RECT det;/*联通域分析结果*/
     Detect_Rect last_dt_rect;
 
+    
+    ret = FHAdv_MD_Ex_Init();
+    if (ret != 0)
+    {
+        printf("[ERRO]: FHAdv_MD_Ex_Init failed, ret=%d\n", ret);
+        goto exit;
+    }
+
+    FHT_MDConfig_Ex_t md_config;
+
+    md_config.threshold = 80;
+    md_config.framedelay = 1;
+    md_config.enable = 1;
+
+    ret = FHAdv_MD_Ex_SetConfig(&md_config);
+    if (ret != 0)
+    {
+        printf("[ERRO]: FHAdv_MD_Ex_SetConfig failed, ret=%d\n", ret);
+        goto exit;
+        }
+
     FILE *fp;/*人形模式参数文件*/
     FH_ODET_cfg_t          cfg;/*人形句柄配置*/
     struct FH_ODET_Handle *odet = NULL;/*人形句柄*/

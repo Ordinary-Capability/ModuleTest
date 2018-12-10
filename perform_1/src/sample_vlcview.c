@@ -53,6 +53,7 @@
 #endif
 
 #define USE_AUDIO_CAP 1
+#define ALIGNTO(addr, edge)  ((addr + edge - 1) & ~(edge - 1))
 
 struct channel_info
 {
@@ -364,7 +365,7 @@ int vlcview(char *dsp_ip, rt_uint32_t port_no)
 #if USE_H265
         FH_VPSS_SetVOMode(i, VPU_VOMODE_SCAN);
 #else
-        if(i==1)FH_VPSS_SetVOMode(i, VPU_VOMODE_SCAN);
+        //if(i==1)FH_VPSS_SetVOMode(i, VPU_VOMODE_SCAN);
 #endif
 
         /******************************************
@@ -395,7 +396,8 @@ int vlcview(char *dsp_ip, rt_uint32_t port_no)
         }
 #else
 #if USE_H265
-        cfg_vencmem.support_type = FH_NORMAL_H265;
+        //cfg_vencmem.support_type = FH_NORMAL_H265;
+        cfg_vencmem.support_type = FH_SMART_H265;
         cfg_vencmem.max_size.u32Width = g_channel_infos[i].width;
         cfg_vencmem.max_size.u32Height = g_channel_infos[i].height;
 
@@ -405,12 +407,33 @@ int vlcview(char *dsp_ip, rt_uint32_t port_no)
             printf("Error: FH_VENC_CreateChn failed with %d\n", ret);
             goto err_exit;
         }
-
+        /*
         cfg_param.chn_attr.enc_type = FH_NORMAL_H265;
         cfg_param.chn_attr.h265_attr.profile = H265_PROFILE_MAIN;
         cfg_param.chn_attr.h265_attr.i_frame_intterval = 50;
         cfg_param.chn_attr.h265_attr.size.u32Width = g_channel_infos[i].width;
         cfg_param.chn_attr.h265_attr.size.u32Height = g_channel_infos[i].height;
+        */
+        cfg_param.chn_attr.enc_type = FH_SMART_H265;
+        cfg_param.chn_attr.s265_attr.profile = H265_PROFILE_MAIN;
+        cfg_param.chn_attr.s265_attr.refresh_frame_intterval = 50;
+        cfg_param.chn_attr.s265_attr.size.u32Width = g_channel_infos[i].width;
+        cfg_param.chn_attr.s265_attr.size.u32Height = g_channel_infos[i].height;
+        cfg_param.chn_attr.s265_attr.smart_en = FH_TRUE;
+        cfg_param.chn_attr.s265_attr.texture_en = FH_TRUE;
+        cfg_param.chn_attr.s265_attr.backgroudmodel_en = FH_TRUE;
+        cfg_param.chn_attr.s265_attr.mbconsist_en = FH_FALSE;
+
+        cfg_param.chn_attr.s265_attr.gop_th.GOP_TH_NUM = 4;
+        cfg_param.chn_attr.s265_attr.gop_th.TH_VAL[0] = 8;
+        cfg_param.chn_attr.s265_attr.gop_th.TH_VAL[1] = 15;
+        cfg_param.chn_attr.s265_attr.gop_th.TH_VAL[2] = 25;
+        cfg_param.chn_attr.s265_attr.gop_th.TH_VAL[3] = 35;
+        cfg_param.chn_attr.s265_attr.gop_th.MIN_GOP[0] = 380;
+        cfg_param.chn_attr.s265_attr.gop_th.MIN_GOP[1] = 330;
+        cfg_param.chn_attr.s265_attr.gop_th.MIN_GOP[2] = 270;
+        cfg_param.chn_attr.s265_attr.gop_th.MIN_GOP[3] = 220;
+        cfg_param.chn_attr.s265_attr.gop_th.MIN_GOP[4] = 160;
 
         cfg_param.rc_attr.rc_type = FH_RC_H265_VBR;
         cfg_param.rc_attr.h265_vbr.init_qp = 35;
@@ -428,7 +451,8 @@ int vlcview(char *dsp_ip, rt_uint32_t port_no)
         cfg_param.rc_attr.h265_vbr.FrameRate.frame_count = g_channel_infos[i].frame_count;
         cfg_param.rc_attr.h265_vbr.FrameRate.frame_time  = g_channel_infos[i].frame_time;
 #else
-        cfg_vencmem.support_type = FH_NORMAL_H264;
+        //cfg_vencmem.support_type = FH_NORMAL_H264;
+        cfg_vencmem.support_type = FH_SMART_H264;
         cfg_vencmem.max_size.u32Width = g_channel_infos[i].width;
         cfg_vencmem.max_size.u32Height = g_channel_infos[i].height;
 
@@ -439,11 +463,33 @@ int vlcview(char *dsp_ip, rt_uint32_t port_no)
             goto err_exit;
         }
 
+        /*
         cfg_param.chn_attr.enc_type = FH_NORMAL_H264;
         cfg_param.chn_attr.h264_attr.profile = H264_PROFILE_MAIN;
         cfg_param.chn_attr.h264_attr.i_frame_intterval = 50;
         cfg_param.chn_attr.h264_attr.size.u32Width = g_channel_infos[i].width;
-        cfg_param.chn_attr.h264_attr.size.u32Height = g_channel_infos[i].height;
+        cfg_param.chn_attr.h264_attr.size.u32Height = g_channel_infos[i].height;*/
+
+        cfg_param.chn_attr.enc_type = FH_SMART_H264;
+        cfg_param.chn_attr.h264_attr.profile = H264_PROFILE_MAIN;
+        cfg_param.chn_attr.s264_attr.refresh_frame_intterval = 50;
+        cfg_param.chn_attr.s264_attr.size.u32Width = g_channel_infos[i].width;
+        cfg_param.chn_attr.s264_attr.size.u32Height = g_channel_infos[i].height;
+        cfg_param.chn_attr.s264_attr.smart_en = FH_TRUE;
+        cfg_param.chn_attr.s264_attr.texture_en = FH_TRUE;
+        cfg_param.chn_attr.s264_attr.backgroudmodel_en = FH_TRUE;
+        cfg_param.chn_attr.s264_attr.mbconsist_en = FH_FALSE;
+
+        cfg_param.chn_attr.s264_attr.gop_th.GOP_TH_NUM = 4;
+        cfg_param.chn_attr.s264_attr.gop_th.TH_VAL[0] = 8;
+        cfg_param.chn_attr.s264_attr.gop_th.TH_VAL[1] = 15;
+        cfg_param.chn_attr.s264_attr.gop_th.TH_VAL[2] = 25;
+        cfg_param.chn_attr.s264_attr.gop_th.TH_VAL[3] = 35;
+        cfg_param.chn_attr.s264_attr.gop_th.MIN_GOP[0] = 380;
+        cfg_param.chn_attr.s264_attr.gop_th.MIN_GOP[1] = 330;
+        cfg_param.chn_attr.s264_attr.gop_th.MIN_GOP[2] = 270;
+        cfg_param.chn_attr.s264_attr.gop_th.MIN_GOP[3] = 220;
+        cfg_param.chn_attr.s264_attr.gop_th.MIN_GOP[4] = 160;
 
         cfg_param.rc_attr.rc_type = FH_RC_H264_VBR;
         cfg_param.rc_attr.h264_vbr.init_qp = 35;
@@ -489,9 +535,43 @@ int vlcview(char *dsp_ip, rt_uint32_t port_no)
         }
     }
 
-#if USE_BGM
+#if 1
+    int w, h;
+    FH_SIZE picsize;
+    w = ALIGNTO(CH0_WIDTH, 16) / 8;
+    h = ALIGNTO(CH0_HEIGHT, 16) / 8;
+    ret = FH_BGM_InitMem(w, h);
+    if (RETURN_OK != ret)
+    {
+        printf("Error: FH_BGM_InitMem failed with %d\n", ret);
+        goto err_exit;
+    }
 
-#else
+    picsize.u32Width = w;
+    picsize.u32Height = h;
+    ret = FH_BGM_SetConfig(&picsize);
+    if (RETURN_OK != ret)
+    {
+        printf("Error: FH_BGM_SetConfig failed with %d\n", ret);
+        goto err_exit;
+    }
+
+    ret = FH_BGM_Enable();
+    if (RETURN_OK != ret)
+    {
+        printf("Error: FH_BGM_Enable failed with %d\n", ret);
+        goto err_exit;
+    }
+
+    ret = FH_SYS_BindVpu2Bgm();
+    if (RETURN_OK != ret)
+    {
+        printf("Error: FH_BGM_Enable failed with %d\n", ret);
+        goto err_exit;
+    }
+
+//#else
+    /*
     ret = FHAdv_MD_Ex_Init();
     if (ret != 0)
     {
@@ -510,7 +590,7 @@ int vlcview(char *dsp_ip, rt_uint32_t port_no)
     {
         printf("[ERRO]: FHAdv_MD_Ex_SetConfig failed, ret=%d\n", ret);
         goto err_exit;
-    }
+    }*/
 #endif
     /******************************************
      step  9: init ISP, and then start ISP process thread

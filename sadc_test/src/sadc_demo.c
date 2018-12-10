@@ -2,54 +2,59 @@
 #include <rtthread.h>
 #include "sadc.h"
 
-#define CHANNEL_NUM 0
+#define MAX_CHANNEL_NUM 3
 #define REF_VOLT 3300
 #define DIGIT_MAX 0x3ff  /* / driver def */
+
+static int sadc_run=0;
 
 void sadc_demo_main(void *param)
 {
     rt_device_t sadc_dev;
-    unsigned int raw_data;
-    SADC_INFO info;
-
-    info.channel   = CHANNEL_NUM;
-    info.sadc_data = 0;
+    SADC_INFO data;
+    rt_uint32_t i;
 
     sadc_dev = rt_device_find("sadc");
-
     if (!sadc_dev)
     {
         rt_kprintf("cann't find the sadc dev\n");
+        return;
     }
 
     sadc_dev->init(sadc_dev);
     sadc_dev->open(sadc_dev, 0);
 
-    rt_kprintf("channel:%d,ref volt:%dmv\n", info.channel, REF_VOLT);
-
-    while (1)
+    sadc_run = 1;
+    while(sadc_run==1)
     {
-        sadc_dev->control(sadc_dev, SADC_CMD_READ_RAW_DATA,
-                              &info);  /* //get digit data */
-        raw_data = info.sadc_data;
-        sadc_dev->control(sadc_dev, SADC_CMD_READ_VOLT,
-                          &info);  /* //get digit data */
-
-        rt_kprintf("digt data:%d volt:%d mv\n", raw_data,
-                   info.sadc_data);
-
-        rt_thread_delay(1);
+        rt_kprintf("SADC channel(0-3) volt:");
+        for(i=0; i<= MAX_CHANNEL_NUM; i++)
+        {
+            data.channel = i;
+            rt_device_control(sadc_dev, SADC_CMD_READ_VOLT, &data);
+            rt_kprintf("\t%dmV", data.sadc_data);
+            }
+        rt_kprintf("\n");
+        rt_thread_delay(20);
     }
 
+    rt_device_close(sadc_dev);
     return;
 }
 
-void sadc_demo_init(void)
+void sadc_exit()
+{
+    sadc_run = 0;
+    return;
+    }
+
+
+void sadc_test(void)
 {
     rt_thread_t threadSadc;
 
     threadSadc =
-        rt_thread_create("sadc", sadc_demo_main, RT_NULL, 10 * 1024, 80, 20);
+        rt_thread_create("sadc_test", sadc_demo_main, RT_NULL, 10 * 1024, 80, 20);
 
     if (threadSadc != RT_NULL)
         rt_thread_startup(threadSadc);
@@ -57,5 +62,6 @@ void sadc_demo_init(void)
 
 #ifdef RT_USING_FINSH
 #include <finsh.h>
-FINSH_FUNCTION_EXPORT(sadc_demo_main, sadc_demo_main());
+FINSH_FUNCTION_EXPORT(sadc_test, sadc_test());
+FINSH_FUNCTION_EXPORT(sadc_exit, sadc_exit());
 #endif
