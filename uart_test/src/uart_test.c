@@ -215,6 +215,6 @@ int uart_test(const char *name)
 
 #ifdef RT_USING_FINSH
 #include <finsh.h>
-FINSH_FUNCTION_EXPORT(uart_test, uart_test());
+FINSH_FUNCTION_EXPORT(uart_test, uart_test("uart1"));
 #endif
 

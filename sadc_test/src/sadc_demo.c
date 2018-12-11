@@ -12,7 +12,7 @@ void sadc_demo_main(void *param)
 {
     rt_device_t sadc_dev;
     SADC_INFO data;
-    rt_uint32_t i;
+    rt_uint32_t i, j;
 
     sadc_dev = rt_device_find("sadc");
     if (!sadc_dev)
@@ -25,7 +25,8 @@ void sadc_demo_main(void *param)
     sadc_dev->open(sadc_dev, 0);
 
     sadc_run = 1;
-    while(sadc_run==1)
+    j=0;
+    while(sadc_run==1 && j<200)
     {
         rt_kprintf("SADC channel(0-3) volt:");
         for(i=0; i<= MAX_CHANNEL_NUM; i++)
@@ -36,6 +37,7 @@ void sadc_demo_main(void *param)
             }
         rt_kprintf("\n");
         rt_thread_delay(20);
+        j++;
     }
 
     rt_device_close(sadc_dev);
