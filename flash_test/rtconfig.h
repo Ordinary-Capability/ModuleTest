@@ -19,5 +19,8 @@
 #define ENC28J60_SPI_DEV ("ssi0_1")         /* SPI device name */
 #endif
 
+
+#define RT_USING_MBEDTLS
+
 #include "platform_def.h"
 #endif
