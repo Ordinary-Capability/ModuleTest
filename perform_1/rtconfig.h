@@ -9,7 +9,9 @@
 #define FH_USING_COOLVIEW
 /* #define FH_USING_MULTI_SENSOR */
 #ifdef CONFIG_CHIP_FH8856
-#define RT_USING_JXF22_MIPI
+//#define RT_USING_JXF22_MIPI
+#define RT_USING_OVOS05_MIPI
+#define RT_USING_OVOS05_MIPI_WDR
 #else
 #ifdef CONFIG_CHIP_FH8833T
 #define RT_USING_JXF22
@@ -51,7 +53,7 @@
 #else
 # define FH_USING_PES_PACK
 #endif
-
+#define RT_USING_DFS_JFFS2
 #ifdef RT_USING_SOFTCORE
 #ifndef RT_USING_VBUS
 #error "softcore depends on VBUS, you must define RT_USING_VBUS."
