@@ -55,6 +55,9 @@
 #define USE_AUDIO_CAP 1
 #define ALIGNTO(addr, edge)  ((addr + edge - 1) & ~(edge - 1))
 
+
+int log_simu_init(void);
+
 struct channel_info
 {
     FH_SINT32 channel;
@@ -649,6 +652,14 @@ int vlcview(char *dsp_ip, rt_uint32_t port_no)
         rt_thread_startup(g_thread_audiocap);
     }
 #endif
+
+    rt_thread_t log_test_th =
+        rt_thread_create("log_write_test", log_simu_init, RT_NULL,
+                            2*1024, RT_APP_THREAD_PRIORITY, 10);
+    if(log_test_th != RT_NULL)
+        rt_thread_startup(log_test_th);
+
+
 
 #ifdef FH_USING_COOLVIEW
     rt_thread_t thread_dbg;
