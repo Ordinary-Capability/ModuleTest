@@ -49,7 +49,7 @@
 #endif
 
 #if defined(CONFIG_CHIP_FH8856) || defined(CONFIG_CHIP_FH8852)
-#define USE_H265 0
+#define USE_H265 1
 #endif
 
 #define USE_AUDIO_CAP 1
