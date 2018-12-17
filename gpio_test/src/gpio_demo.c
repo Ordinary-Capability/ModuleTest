@@ -3,6 +3,8 @@
 #include <rtdevice.h>
 #include "gpio.h"
 #include "iomux.h"
+#include <unistd.h>
+#include <fcntl.h>
 
 /*GPIO TEST solution:
  *To test gpio pull UP/DOWN function, set target gpio pin as output pin,
@@ -50,6 +52,9 @@ int init_refer_gpio(int gpio_num)
     gpio_direction_output(gpio_num, 0);
     return 0; 
     }
+
+
+
 
 
 int gpio_irq(int gpio_num, int irq_type)
@@ -136,6 +141,56 @@ int gpio_irq(int gpio_num, int irq_type)
     gpio_release(gpio_num);
     gpio_release(g_refer_gpio);
     return 0;
+    }
+
+void write_sd()
+{
+    rt_uint32_t fd;
+    unsigned char data[16]="Helloworld";
+
+
+    fd = open("/log.txt", O_RDWR | O_APPEND | O_CREAT, 0);
+    if(fd<0)
+    {
+        rt_kprintf("open file fail.\n");
+        return ;
+        }
+    write(fd, data, sizeof(data));
+    close(fd);
+
+    }
+
+void read_sd()
+{
+    rt_uint32_t fd;
+    unsigned char data[16];
+
+    fd = open("/log.txt", O_RDWR | O_APPEND | O_CREAT, 0);
+    if(fd<0)
+    {
+        rt_kprintf("open file fail.\n");
+        return ;
+        }
+    read(fd, data, sizeof(data));
+    close(fd);
+    rt_kprintf("read data: %s\n", data);
+
+    }
+
+
+void gpio_get(int gpio_num)
+{
+    int v=0;
+    if(gpio_request(gpio_num)<0)
+    {
+        rt_kprintf("Request GPIO %d fail.\n", gpio_num);
+        return -1;
+        };
+    v = gpio_get_value(gpio_num);
+    gpio_release(gpio_num);
+
+    rt_kprintf("GPIO %d Value %d\n", gpio_num, v);
+    return;
     }
 
 int gpio_level_test(int gpio_num)
@@ -312,4 +367,7 @@ void gpio_demo_init(void)
 #ifdef RT_USING_FINSH
 #include <finsh.h>
 FINSH_FUNCTION_EXPORT(gpio_func_test, gpio_func_test(gpioNum));
+FINSH_FUNCTION_EXPORT(gpio_get, gpio_get(53));
+FINSH_FUNCTION_EXPORT(write_sd, write_ds());
+FINSH_FUNCTION_EXPORT(read_sd, read_sd());
 #endif
