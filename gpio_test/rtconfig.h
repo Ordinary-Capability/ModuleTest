@@ -15,5 +15,7 @@
 
 #define RT_USING_COMPONENTS_LINUX_ADAPTER
 
+#define RT_USING_SPISLAVE
+
 #include "platform_def.h"
 #endif
